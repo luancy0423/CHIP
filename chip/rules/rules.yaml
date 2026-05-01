@@ -1,0 +1,418 @@
+# CHIP Compression Rules v0.2 (2025-05-01)
+# ==========================================
+# v0.2 vs v0.1 主要变化:
+#   - 标签层从 [角:X] / 【任】 改为 ### 角色 (实测全 tokenizer 1 token,完爆方括号)
+#   - 新增 L3 成语层(基于 idiom_whitelist.json 实测)
+#   - 新增 L4 协议层(归一化用户已有的标签)
+
+rules:
+  # ============================================================
+  # L1: 词法层 — 啰嗦套话剪枝
+  # ============================================================
+  - id: L1-001
+    layer: L1
+    pattern: "请你?帮我?"
+    replacement: ""
+    saves: 2
+    risk: low
+    description: "客套语 '请你帮我' / '请帮我' → 空"
+
+  - id: L1-002
+    layer: L1
+    pattern: "麻烦你?"
+    replacement: ""
+    saves: 2
+    risk: low
+
+  - id: L1-003
+    layer: L1
+    pattern: "如果可以的话[,,]?"
+    replacement: ""
+    saves: 3
+    risk: low
+
+  - id: L1-004
+    layer: L1
+    pattern: "(?:能不能|可不可以|可以|能)(?=帮|告诉|解释|总结|分析)"
+    replacement: ""
+    saves: 2
+    risk: low
+
+  - id: L1-005
+    layer: L1
+    pattern: "辛苦你?"
+    replacement: ""
+    saves: 2
+    risk: low
+
+  - id: L1-006
+    layer: L1
+    pattern: "(?:谢谢|感谢)(?:你|了)?[!!.。]?"
+    replacement: ""
+    saves: 2
+    risk: low
+
+  # ---- 进行/做 + 动词性名词 → 单字动词 ----
+  - id: L1-010
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?分析"
+    replacement: "分析"
+    saves: 2
+    risk: low
+
+  - id: L1-011
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?总结"
+    replacement: "总结"
+    saves: 2
+    risk: low
+
+  - id: L1-012
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?处理"
+    replacement: "处理"
+    saves: 2
+    risk: low
+
+  - id: L1-013
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?解释"
+    replacement: "解释"
+    saves: 2
+    risk: low
+
+  - id: L1-014
+    layer: L1
+    pattern: "做(?:一?(?:个|下|次)?)?判断"
+    replacement: "判定"
+    saves: 3
+    risk: low
+
+  - id: L1-015
+    layer: L1
+    pattern: "做(?:一?(?:个|下|次)?)?解释"
+    replacement: "解释"
+    saves: 3
+    risk: low
+
+  - id: L1-016
+    layer: L1
+    pattern: "给(?:出|我)(?:一些|几个)?建议"
+    replacement: "建议"
+    saves: 2
+    risk: low
+
+  - id: L1-017
+    layer: L1
+    pattern: "提供(?:一些|相关|相对)?帮助"
+    replacement: "助"
+    saves: 2
+    risk: mid
+
+  - id: L1-018
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?检查"
+    replacement: "检查"
+    saves: 2
+    risk: low
+
+  - id: L1-019
+    layer: L1
+    pattern: "进行(?:一?(?:个|下|次)?)?优化"
+    replacement: "优化"
+    saves: 2
+    risk: low
+
+  # ---- 连接词 ----
+  - id: L1-020
+    layer: L1
+    pattern: "也就是说[,,]?"
+    replacement: "即"
+    saves: 3
+    risk: low
+
+  - id: L1-021
+    layer: L1
+    pattern: "换句话说[,,]?"
+    replacement: "即"
+    saves: 3
+    risk: low
+
+  - id: L1-022
+    layer: L1
+    pattern: "与此同时[,,]?"
+    replacement: "同时,"
+    saves: 2
+    risk: low
+
+  - id: L1-023
+    layer: L1
+    pattern: "在这种情况下[,,]?"
+    replacement: "此时,"
+    saves: 3
+    risk: low
+
+  - id: L1-024
+    layer: L1
+    pattern: "由此可见[,,]?"
+    replacement: "故"
+    saves: 3
+    risk: low
+
+  - id: L1-025
+    layer: L1
+    pattern: "因此(?:[,,]|说)?"
+    replacement: "故"
+    saves: 1
+    risk: low
+
+  - id: L1-026
+    layer: L1
+    pattern: "如果没有"
+    replacement: "若无"
+    saves: 2
+    risk: low
+
+  - id: L1-027
+    layer: L1
+    pattern: "通过(.+?)的方式"
+    replacement: "用\\1"
+    saves: 2
+    risk: mid
+
+  - id: L1-028
+    layer: L1
+    pattern: "(?:如上所述|前面提到的|刚才说的)"
+    replacement: "前述"
+    saves: 3
+    risk: low
+
+  # ---- 修饰副词 ----
+  - id: L1-030
+    layer: L1
+    pattern: "比较(?:简洁|清晰|详细)地?"
+    replacement: ""
+    saves: 3
+    risk: low
+
+  - id: L1-031
+    layer: L1
+    pattern: "相对(?:简洁|详细|完整)地?"
+    replacement: ""
+    saves: 3
+    risk: low
+
+  - id: L1-032
+    layer: L1
+    pattern: "尽可能(?:地)?"
+    replacement: "尽量"
+    saves: 1
+    risk: low
+
+  - id: L1-033
+    layer: L1
+    pattern: "非常(?:详细|详尽|全面)地?"
+    replacement: "详细"
+    saves: 2
+    risk: low
+
+  # ============================================================
+  # L2: 句法层
+  # ============================================================
+  - id: L2-001
+    layer: L2
+    pattern: "对(.+?)进行(?:一?(?:个|下|次)?(?:全面|详细|简要|认真|深入)?的?)?([\\u4e00-\\u9fff]{1,4})"
+    replacement: "\\2\\1"
+    saves: 2
+    risk: mid
+    description: "'对 X 进行 Y' → 'Y X'"
+
+  - id: L2-002
+    layer: L2
+    pattern: "把(.+?)作为(.+?)(?=[,,。.\\s])"
+    replacement: "视\\1为\\2"
+    saves: 2
+    risk: mid
+
+  - id: L2-003
+    layer: L2
+    pattern: "由于(.+?)所以"
+    replacement: "\\1故"
+    saves: 3
+    risk: low
+
+  - id: L2-004
+    layer: L2
+    pattern: "虽然(.+?)但是"
+    replacement: "\\1然"
+    saves: 3
+    risk: mid
+
+  - id: L2-005
+    layer: L2
+    pattern: "不仅(.+?)而且"
+    replacement: "\\1且"
+    saves: 3
+    risk: low
+
+  - id: L2-006
+    layer: L2
+    pattern: "因为(.+?)所以"
+    replacement: "\\1故"
+    saves: 3
+    risk: low
+
+  - id: L2-007
+    layer: L2
+    pattern: "如果(.+?)那么"
+    replacement: "若\\1则"
+    saves: 2
+    risk: low
+
+  # ---- 列表化 ----
+  - id: L2-010
+    layer: L2
+    pattern: "第一[,,]"
+    replacement: "1. "
+    saves: 1
+    risk: low
+
+  - id: L2-011
+    layer: L2
+    pattern: "第二[,,]"
+    replacement: "2. "
+    saves: 1
+    risk: low
+
+  - id: L2-012
+    layer: L2
+    pattern: "第三[,,]"
+    replacement: "3. "
+    saves: 1
+    risk: low
+
+  - id: L2-013
+    layer: L2
+    pattern: "第四[,,]"
+    replacement: "4. "
+    saves: 1
+    risk: low
+
+  - id: L2-014
+    layer: L2
+    pattern: "首先[,,]"
+    replacement: "1. "
+    saves: 1
+    risk: low
+
+  - id: L2-015
+    layer: L2
+    pattern: "其次[,,]"
+    replacement: "2. "
+    saves: 1
+    risk: low
+
+  # ============================================================
+  # L2 协议化重写 (v0.2 修订)
+  # 实测:### 在所有 9 个 tokenizer 上都是 1 token
+  # ============================================================
+  - id: L2-020
+    layer: L2
+    pattern: "请\\s*(?:用|以)?\\s*(?:JSON|json|Json)\\s*格式\\s*(?:输出|返回|回答)"
+    replacement: "\n### 输出\nJSON"
+    saves: 4
+    risk: low
+
+  - id: L2-021
+    layer: L2
+    pattern: "请\\s*(?:用|以)?\\s*中文\\s*(?:回答|回复|输出)"
+    replacement: "\n### 输出\n中文"
+    saves: 3
+    risk: low
+
+  - id: L2-022
+    layer: L2
+    pattern: "请\\s*(?:你)?\\s*扮演\\s*(?:一(?:个|位))?\\s*(.+?)(?=[,,。.\\n]|的角色|$)"
+    replacement: "\n### 角色\n\\1\n"
+    saves: 4
+    risk: high
+    description: |
+      '请你扮演一位 X' → '### 角色\nX'
+      已知问题:含空格的复合 NP 可能被截断,Day 3 用 jieba 修复
+
+  # ============================================================
+  # L3: 成语层(默认 universal 11 条核心成语,需 layer=L3 显式启用)
+  # 在 ≥3 国产 tokenizer 上 1 token,基于 idiom_whitelist.json 实测
+  # ============================================================
+  - id: L3-001
+    layer: L3
+    pattern: "(?:大家都知道|每个人都知道|众人皆知)"
+    replacement: "众所周知"
+    saves: 2
+    risk: mid
+
+  - id: L3-002
+    layer: L3
+    pattern: "投入(?:全部|所有)?(?:精力|力量)(?:去做|做)?"
+    replacement: "全力以赴"
+    saves: 2
+    risk: mid
+
+  - id: L3-003
+    layer: L3
+    pattern: "(?:根据|结合|按照)(?:当地|实际)情况"
+    replacement: "因地制宜"
+    saves: 2
+    risk: mid
+
+  - id: L3-004
+    layer: L3
+    pattern: "(?:一步一步|一步步)(?:地)?(?:推进|进行)"
+    replacement: "循序渐进"
+    saves: 3
+    risk: mid
+
+  - id: L3-005
+    layer: L3
+    pattern: "(?:不断|持续|一直)(?:坚持|努力做)"
+    replacement: "持之以恒"
+    saves: 2
+    risk: mid
+
+  - id: L3-006
+    layer: L3
+    pattern: "认真(?:仔细)?(?:地)?对待"
+    replacement: "脚踏实地"
+    saves: 1
+    risk: mid
+
+  # ============================================================
+  # L4: 协议层归一化
+  # ============================================================
+  - id: L4-001
+    layer: L4
+    pattern: "(?:#+\\s*)?(?:任务|目标|Task|TASK)\\s*[::]\\s*"
+    replacement: "### 任务\n"
+    saves: 0
+    risk: low
+
+  - id: L4-002
+    layer: L4
+    pattern: "(?:#+\\s*)?(?:角色|身份|Role|ROLE)\\s*[::]\\s*"
+    replacement: "### 角色\n"
+    saves: 0
+    risk: low
+
+  - id: L4-003
+    layer: L4
+    pattern: "(?:#+\\s*)?(?:输出|返回|输出格式|Output|OUTPUT)\\s*[::]\\s*"
+    replacement: "### 输出\n"
+    saves: 0
+    risk: low
+
+  - id: L4-004
+    layer: L4
+    pattern: "(?:#+\\s*)?(?:约束|限制|要求|规则|Constraints|CONSTRAINTS)\\s*[::]\\s*"
+    replacement: "### 约束\n"
+    saves: 0
+    risk: low

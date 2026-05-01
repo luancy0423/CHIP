@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chip-prompt"
+version = "0.1.0"
+description = "CHIP: Chinese High-density Instruction Protocol — a protocol-based, auditable prompt compressor for Chinese LLMs."
+authors = [{name = "Marcus Cui Wei"}]
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+keywords = ["llm", "prompt", "compression", "chinese", "tokenizer"]
+
+dependencies = [
+    "tiktoken>=0.7.0",
+    "jieba>=0.42.1",
+    "pyyaml>=6.0",
+    "regex>=2024.5.15",
+]
+
+[project.optional-dependencies]
+# Day 1 实测脚本需要的
+bench = [
+    "transformers>=4.40",
+    "sentencepiece>=0.2.0",
+    "datasets>=2.19",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "pytest>=7.0",
+]
+# Day 3 demo 需要的
+demo = [
+    "gradio>=4.0",
+]
+# 全套(开发用)
+all = [
+    "chip-prompt[bench,demo]",
+]
+
+[project.urls]
+Homepage    = "https://github.com/marcuscw/CHIP"
+Repository  = "https://github.com/marcuscw/CHIP"
+Issues      = "https://github.com/marcuscw/CHIP/issues"
+
+[project.scripts]
+chip = "chip.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chip*"]
+
+[tool.setuptools.package-data]
+chip = ["rules/*.yaml", "data/*.txt"]
