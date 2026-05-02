@@ -10,13 +10,16 @@ CHIP 主压缩器。设计原则:
 当前实现层级:
     L1 (lex)   — 词法替换:啰嗦套话 → 紧凑动宾,纯正则,~1.3-1.5x 压缩
     L2 (syn)   — 句法重排:虚词替换、列表化,需 jieba 分词,~2-3x
-    L3 (sem)   — 语义剪枝(占位,Day 4 之后实现,基于 token-classifier)
+    L3 (idiom) — 成语压缩(基于实测白名单),需 target 是国产 tokenizer
+    L4 (proto) — 协议层归一化,统一为 ### 标签
 
-Day 2-3 主要工作:扩充 rules.yaml,本文件骨架基本不动。
+NP-aware 角色提取(可选):
+    L2-022 默认用正则,在含空格的复合 NP 上偶有截断。
+    设环境变量 CHIP_USE_JIEBA=1 启用 jieba 增强版。
 """
-import os  # ← 新增
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -187,18 +190,23 @@ class Compressor:
                 applied.append(f"{rule.id}×{n}")
                 masked = new_text
 
-        # 收尾
+        # 收尾:多余空白、连续标点
         masked = re.sub(r"[ \t]+", " ", masked)
         masked = re.sub(r"\s*\n\s*\n\s*\n+", "\n\n", masked)
-        # 协议层留下的孤立标点清理
+
+        # 协议层留下的孤立标点清理(L2-022 等会留下 "\n,xxx")
         masked = re.sub(r"\n[,,;;。.\s]+", "\n", masked)
         masked = re.sub(r"^[,,;;]+\s*", "", masked, flags=re.MULTILINE)
-        masked = masked.strip()
 
+        masked = masked.strip()
         compressed = _unmask(masked, mappings)
+
         return CompressionResult(
-            original=original, compressed=compressed,
-            applied_rules=applied, target=self.target, layers=self.layers,
+            original=original,
+            compressed=compressed,
+            applied_rules=applied,
+            target=self.target,
+            layers=self.layers,
         )
 
 
@@ -227,6 +235,7 @@ def compress(text: str,
     result = _default_compressor[1].compress(text)
     return result if return_result else result.compressed
 
+
 # ============ jieba NP 提取(可选增强) ============
 _jieba_loaded = False
 
@@ -244,13 +253,29 @@ def _ensure_jieba():
         return False
 
 
+# 角色扮演的触发短语 — jieba 用它定位
 _ROLE_PREFIX_RE = re.compile(
     r"请\s*(?:你)?\s*扮演\s*(?:一(?:个|位))?\s*"
 )
 
 
 def _jieba_role_extract(text: str) -> tuple[str, bool]:
-    """用 jieba 词性标注提取最长名词短语作为角色描述。"""
+    """用 jieba 词性标注提取最长名词短语作为角色描述。
+
+    替换 L2-022 的纯正则 lookahead 实现 — 后者在以下场景失败:
+        - 角色描述非常长且无标点结尾
+        - 角色描述被句中的连词意外截断("...然后..." 这种)
+
+    策略:
+        1. 找到 "请你扮演[一位]" 触发短语
+        2. 从触发短语后开始,jieba.posseg 切分
+        3. 贪婪收集 NP token,直到遇到 hard-stop:
+           - 连词 c (然后/接着/以及)
+           - 介词 p (对/把/为)
+           - 动词 v (但 vn 动名词允许)
+           - 句末标点 w (。;,等)
+        4. 助词 'uj/u/ul'(的/地/得)、空格、英文都允许进入 NP
+    """
     if not _ensure_jieba():
         return text, False
 
@@ -266,28 +291,35 @@ def _jieba_role_extract(text: str) -> tuple[str, bool]:
         return text, False
 
     words = list(pseg.cut(body))
+
+    # NP 定义:最长前缀,直到遇到硬终止
+    # HARD_STOP:动词(非 vn)、连词、介词、标点
+    # ALLOW_IN_NP:名词、形容词、英文、数字、量词、助词(的/地/得)、空格
     np_chars = []
     cumlen = 0
     rest_start = 0
-    found_np_core = False
+    found_np_core = False  # 是否已经收到名词或形容词(NP 核心)
 
     for w, flag in words:
+        # hard stop 条件
         is_hard_stop = (
-            flag == "w"
+            flag == "w"                                 # 标点
             or w in {",", ",", "。", ".", ";", ";", ":", ":", "、", "\n"}
-            or flag == "c"
-            or flag == "p"
-            or (flag.startswith("v") and flag != "vn")
+            or flag == "c"                              # 连词
+            or flag == "p"                              # 介词
+            or (flag.startswith("v") and flag != "vn")  # 真动词(非动名词)
         )
         if is_hard_stop and found_np_core:
             rest_start = cumlen
             break
 
+        # 在 NP 内
         np_chars.append(w)
         cumlen += len(w)
         if flag.startswith("n") or flag.startswith("a") or flag == "eng":
             found_np_core = True
     else:
+        # 遍历完了,整个 body 都是 NP
         rest_start = cumlen
 
     np_str = "".join(np_chars).strip()
@@ -296,6 +328,7 @@ def _jieba_role_extract(text: str) -> tuple[str, bool]:
 
     rest = body[rest_start:]
     new_text = f"{head}\n### 角色\n{np_str}\n{rest}"
+    # 清理紧跟在角色块后的孤立标点
     new_text = re.sub(r"\n[,,;;。.]+", "\n", new_text)
     new_text = new_text.strip()
     return new_text, True
