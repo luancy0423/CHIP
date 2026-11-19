@@ -56,7 +56,7 @@ pip install chip-prompt
 或开发版:
 
 ```bash
-git clone https://github.com/marcuscw/CHIP
+git clone https://github.com/luancy0423/CHIP
 cd CHIP
 pip install -e ".[bench,demo]"
 ```
